@@ -1,0 +1,99 @@
+Index: src/main/java/task4/MyThreads.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package task4;\r\n\r\nclass MyThreads {\r\n    public final static Object den = new Object();\r\n    public final static Object ada = new Object();\r\n    public static int n;\r\n    public static int m;\r\n\r\n    public static Thread t1 = new Thread() {\r\n        public void run() {\r\n            synchronized (den) {\r\n                for (int i = 0; i < 5; i++, n++)\r\n                    System.out.println(\"Thread1 n = \" + n);\r\n                Thread.yield();\r\n                synchronized (ada) {\r\n                    for (int i = 0; i < 5; i++, m++)\r\n                        System.out.println(\"Thread1 m = \" + m);\r\n                    System.out.println(\"Thread1 success!\");\r\n                }\r\n            }\r\n        }\r\n    };\r\n    public static Thread t2 = new Thread() {\r\n        public void run() {\r\n            synchronized (ada) {\r\n                for (int i = 0; i < 5; i++, m++)\r\n                    System.out.println(\"Thread2 m = \" + m);\r\n                Thread.yield();\r\n                synchronized (den) {\r\n                    for (int i = 0; i < 5; i++, n++)\r\n                        System.out.println(\"Thread2 n = \" + n);\r\n                    System.out.println(\"Thread2 success!\");\r\n                }\r\n            }\r\n        }\r\n    };\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/task4/MyThreads.java b/src/main/java/task4/MyThreads.java
+--- a/src/main/java/task4/MyThreads.java	(revision 19160a638ed7e89e8e81173026e42d67dfdbc71a)
++++ b/src/main/java/task4/MyThreads.java	(date 1730651860252)
+@@ -1,37 +1,72 @@
+ package task4;
+ 
+ class MyThreads {
+-    public final static Object den = new Object();
+-    public final static Object ada = new Object();
++    public final static Object LOCK = new Object();
++    public static boolean isNInitializedForThread1 = false;
++    public static boolean isMInitializedForThread2 = false;
+     public static int n;
+     public static int m;
+ 
++
+     public static Thread t1 = new Thread() {
+         public void run() {
+-            synchronized (den) {
+-                for (int i = 0; i < 5; i++, n++)
++            synchronized (LOCK) {
++                for (int i = 0; i < 5; i++, n++) {
+                     System.out.println("Thread1 n = " + n);
+-                Thread.yield();
+-                synchronized (ada) {
++                }
++
++                isNInitializedForThread1 = true;
++                LOCK.notifyAll();
++
++                if (t2.isAlive()) {
++                    while (! isMInitializedForThread2) {
++                        try {
++                            LOCK.wait();
++                        } catch (InterruptedException e) {
++                            Thread.currentThread().interrupt();
++                        }
++                    }
++                }
++
++                synchronized (LOCK) {
+                     for (int i = 0; i < 5; i++, m++)
+                         System.out.println("Thread1 m = " + m);
+-                    System.out.println("Thread1 success!");
+-                }
++                }
++                System.out.println("Thread1 success!");
+             }
+         }
+     };
++
++
+     public static Thread t2 = new Thread() {
+         public void run() {
+-            synchronized (ada) {
+-                for (int i = 0; i < 5; i++, m++)
++            synchronized (LOCK) {
++
++                if (t1.isAlive()) {
++                    while (! isNInitializedForThread1) {
++                        try {
++                            LOCK.wait();
++                        } catch (InterruptedException e) {
++                            Thread.currentThread().interrupt();
++                        }
++                    }
++                }
++
++                for (int i = 0; i < 5; i++, m++) {
+                     System.out.println("Thread2 m = " + m);
+-                Thread.yield();
+-                synchronized (den) {
+-                    for (int i = 0; i < 5; i++, n++)
+-                        System.out.println("Thread2 n = " + n);
+-                    System.out.println("Thread2 success!");
+-                }
++                }
++
++                for (int i = 0; i < 5; i++, n++) {
++                    System.out.println("Thread2 n = " + n);
++                }
++                System.out.println("Thread2 success!");
++
++                isMInitializedForThread2 = true;
++                LOCK.notifyAll();
+             }
+         }
+     };
+ }
++
++
++
